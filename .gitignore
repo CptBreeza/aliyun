@@ -1,0 +1,5 @@
+_build
+config/prod.exs
+deps
+mix.lock
+test
