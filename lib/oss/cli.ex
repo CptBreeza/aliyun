@@ -1,3 +1,5 @@
+require Logger
+
 defmodule Aliyun.OSS.CLI do
   @moduledoc """
     阿里云OSS库
@@ -6,7 +8,6 @@ defmodule Aliyun.OSS.CLI do
   alias Aliyun.Config, as: Config
   alias Aliyun.OSS.Mime, as: Mime
 
-  @oss_endpoint Config.get(:aliyun, :oss_endpoint)
   @oss_access_key_id Config.get(:aliyun, :access_key_id) || Config.get(:aliyun, :oss_access_key_id)
   @oss_access_key_secret Config.get(:aliyun, :access_key_secret) || Config.get(:aliyun, :oss_access_key_secret)
 
@@ -14,11 +15,11 @@ defmodule Aliyun.OSS.CLI do
     获取所有Buckets信息.
     iex> Aliyun.OSS.CLI.list_buckets
   """
-  def list_buckets do
+  def list_buckets(oss_endpoint \\ Config.get(:aliyun, :oss_endpoint)) do
     string_to_sign = "GET\n\n\n#{format_gmt_time()}\n/"
     signature = gen_signature(string_to_sign)
     headers = ["Authorization": "OSS #{@oss_access_key_id}:#{signature}", "Date": format_gmt_time()]
-    case HTTPoison.get(@oss_endpoint, headers) do
+    case HTTPoison.get(oss_endpoint, headers) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         buckets = body |> xpath(~x"//ListAllMyBucketsResult/Buckets/Bucket"l,
           name: ~x"./Name/text()",
@@ -40,13 +41,14 @@ defmodule Aliyun.OSS.CLI do
     创建Bucket.
     iex> Aliyun.OSS.CLI.create_bucket("icb-data")
   """
-  def create_bucket(bucket, acl \\ :private) do
+  def create_bucket(bucket, oss_endpoint \\ Config.get(:aliyun, :oss_endpoint), acl \\ :private) do
     string_to_sign = "PUT\n\napplication/octet-stream\n#{format_gmt_time()}\nx-oss-acl:#{acl}\n/#{bucket}/"
     signature = gen_signature(string_to_sign)
     headers = ["Authorization": "OSS #{@oss_access_key_id}:#{signature}", "Date": format_gmt_time(), "X-OSS-ACL": "#{acl}"]
-    url = bucket <> "." <> @oss_endpoint
+    url = bucket <> "." <> oss_endpoint
     case HTTPoison.put(url, "", headers) do
       {:ok, %HTTPoison.Response{status_code: 200}} ->
+        Logger.info("create_bucket##{bucket}", filter: :oss)
         {:ok, 200}
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         error = body |> xpath(~x"//Error", code: ~x"./Code/text()", message: ~x"./Message/text()")
@@ -60,13 +62,14 @@ defmodule Aliyun.OSS.CLI do
     删除Bucket.
     iex> Aliyun.OSS.CLI.delete_bucket("icb-data")
   """
-  def delete_bucket(bucket) do
+  def delete_bucket(bucket, oss_endpoint \\ Config.get(:aliyun, :oss_endpoint)) do
     string_to_sign = "DELETE\n\n\n#{format_gmt_time()}\n/#{bucket}/"
     signature = gen_signature(string_to_sign)
     headers = ["Authorization": "OSS #{@oss_access_key_id}:#{signature}", "Date": format_gmt_time()]
-    url = bucket <> "." <> @oss_endpoint
+    url = bucket <> "." <> oss_endpoint
     case HTTPoison.delete(url, headers) do
       {:ok, %HTTPoison.Response{status_code: 204}} ->
+        Logger.info("delete_bucket##{bucket}", filter: :oss)
         {:ok, 200}
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         error = body |> xpath(~x"//Error", code: ~x"./Code/text()", message: ~x"./Message/text()")
@@ -80,11 +83,11 @@ defmodule Aliyun.OSS.CLI do
     列出Bucket下所有对象信息.
     iex> Aliyun.OSS.CLI.list_objects("icb-data")
   """
-  def list_objects(bucket) do
+  def list_objects(bucket, oss_endpoint \\ Config.get(:aliyun, :oss_endpoint)) do
     string_to_sign = "GET\n\n\n#{format_gmt_time()}\n/#{bucket}/"
     signature = gen_signature(string_to_sign)
     headers = ["Authorization": "OSS #{@oss_access_key_id}:#{signature}", "Date": format_gmt_time()]
-    url = bucket <> "." <> @oss_endpoint
+    url = bucket <> "." <> oss_endpoint
     case HTTPoison.get(url, headers) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         objects = body |> xpath( ~x"//ListBucketResult/Contents"l,
@@ -107,15 +110,16 @@ defmodule Aliyun.OSS.CLI do
     iex> Aliyun.OSS.CLI.put_object("icb-data", "irps/passport.png", "passport.png")
     :ok
   """
-  def put_object(bucket, object_key, file_name) do
+  def put_object(bucket, object_key, file_name, oss_endpoint \\ Config.get(:aliyun, :oss_endpoint)) do
     mime = Mime.path(object_key)
     stream = File.read!(file_name)
     string_to_sign = "PUT\n\n#{mime}\n#{format_gmt_time()}\n/#{bucket}/#{object_key}"
     signature = gen_signature(string_to_sign)
     headers = ["Authorization": "OSS #{@oss_access_key_id}:#{signature}", "Date": format_gmt_time(), "Content-Type": mime]
-    url = bucket <> "." <> @oss_endpoint <> "/#{object_key}"
+    url = bucket <> "." <> oss_endpoint <> "/#{object_key}"
     case HTTPoison.put(url, stream, headers) do
       {:ok, %HTTPoison.Response{status_code: 200}} ->
+        Logger.info("put_object##{object_key}@#{bucket}", filter: :oss)
         {:ok, 200}
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         error = body |> xpath(~x"//Error", code: ~x"./Code/text()", message: ~x"./Message/text()")
@@ -129,14 +133,15 @@ defmodule Aliyun.OSS.CLI do
     上传文件对象.
     iex> Aliyun.OSS.CLI.put_stream_object("icb-data", "irps/passport.png", File.read!("passport.png"))
   """
-  def put_stream_object(bucket, object_key, stream) do
+  def put_stream_object(bucket, object_key, stream, oss_endpoint \\ Config.get(:aliyun, :oss_endpoint)) do
     mime = Mime.path(object_key)
     string_to_sign = "PUT\n\n#{mime}\n#{format_gmt_time()}\n/#{bucket}/#{object_key}"
     signature = gen_signature(string_to_sign)
     headers = ["Authorization": "OSS #{@oss_access_key_id}:#{signature}", "Date": format_gmt_time(), "Content-Type": mime]
-    url = bucket <> "." <> @oss_endpoint <> "/#{object_key}"
+    url = bucket <> "." <> oss_endpoint <> "/#{object_key}"
     case HTTPoison.put(url, stream, headers) do
       {:ok, %HTTPoison.Response{status_code: 200}} ->
+        Logger.info("put_stream_object##{object_key}@#{bucket}", filter: :oss)
         {:ok, 200}
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         error = body |> xpath(~x"//Error", code: ~x"./Code/text()", message: ~x"./Message/text()")
@@ -150,11 +155,11 @@ defmodule Aliyun.OSS.CLI do
     文件对象是否存在.
     iex> ICB.OSS.CLI.object_exist?("icb-data", "irps/passport.png")
   """
-  def object_exists?(bucket, object_key) do
+  def object_exists?(bucket, object_key, oss_endpoint \\ Config.get(:aliyun, :oss_endpoint)) do
     string_to_sign = "HEAD\n\n\n#{format_gmt_time()}\n/#{bucket}/#{object_key}"
     signature = gen_signature(string_to_sign)
     headers = ["Authorization": "OSS #{@oss_access_key_id}:#{signature}", "Date": format_gmt_time()]
-    url = bucket <> "." <> @oss_endpoint <> "/#{object_key}"
+    url = bucket <> "." <> oss_endpoint <> "/#{object_key}"
     case HTTPoison.head(url, headers) do
       {:ok, %HTTPoison.Response{status_code: 200}} ->
         true
@@ -167,13 +172,14 @@ defmodule Aliyun.OSS.CLI do
     删除文件对象.
     iex> ICB.OSS.CLI.delete_object("icb-data", "irps/passport.png")
   """
-  def delete_object(bucket, object_key) do
+  def delete_object(bucket, object_key, oss_endpoint \\ Config.get(:aliyun, :oss_endpoint)) do
     string_to_sign = "DELETE\n\n\n#{format_gmt_time()}\n/#{bucket}/#{object_key}"
     signature = gen_signature(string_to_sign)
     headers = ["Authorization": "OSS #{@oss_access_key_id}:#{signature}", "Date": format_gmt_time()]
-    url = bucket <> "." <> @oss_endpoint <> "/#{object_key}"
+    url = bucket <> "." <> oss_endpoint <> "/#{object_key}"
     case HTTPoison.delete(url, headers) do
       {:ok, %HTTPoison.Response{status_code: 204}} ->
+        Logger.info("delete_object##{object_key}@#{bucket}", filter: :oss)
         {:ok, 200}
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         error = body |> xpath(~x"//Error", code: ~x"./Code/text()", message: ~x"./Message/text()")

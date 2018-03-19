@@ -13,7 +13,9 @@ defmodule Aliyun.Mixfile do
   end
 
   def application do
-    [extra_applications: [:logger, :timex]]
+    [
+      extra_applications: [:logger, :logger_file_backend, :timex]
+    ]
   end
 
   defp deps do
@@ -38,7 +40,7 @@ defmodule Aliyun.Mixfile do
       files: ["lib", "config", "priv", "mix.exs", "README.md"],
       maintainers: ["linq <linq.lin@qq.com>"],
       licenses: ["MIT"],
-      links: %{"GitHub": "https://github.com/wzdot/aliyun.git" }
+      links: %{"GitHub": "https://github.com/wzdot/aliyun.git"}
     ]    
   end
 end

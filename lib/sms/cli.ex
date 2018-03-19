@@ -1,3 +1,5 @@
+require Logger
+
 defmodule Aliyun.SMS.CLI do
   @moduledoc """
     阿里云SMS库
@@ -18,6 +20,7 @@ defmodule Aliyun.SMS.CLI do
     body = [{"Signature", signature} | arguments]
     case HTTPoison.post(@sms_endpoint, {:form, body}) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        phone_numbers |> String.split(",") |> Enum.each(fn phone -> Logger.info("[#{template_code}##{phone}] => #{Poison.encode!(template_param)}", filter: :sms) end)
         {:ok, 200, Poison.decode!(body)}
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         {:ok, status_code, Poison.decode!(body)}

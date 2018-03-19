@@ -4,3 +4,4 @@ deps
 mix.lock
 test
 doc
+logs
