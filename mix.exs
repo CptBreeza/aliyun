@@ -7,6 +7,8 @@ defmodule Aliyun.Mixfile do
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     description: description(),
+     package: package(),
      deps: deps()]
   end
 
@@ -22,7 +24,21 @@ defmodule Aliyun.Mixfile do
       {:poison, "~> 3.1"},
       {:httpoison, "~> 1.0"},
       {:uuid, "~> 1.1"},
-      {:distillery, "~> 1.5", runtime: false}
+      {:distillery, "~> 1.5", runtime: false},
+      {:ex_doc, ">= 0.0.0", only: :dev}
     ]
+  end
+
+  defp description do
+    "阿里云对象存储OSS与短信服务接口库"
+  end
+
+  defp package do
+    [
+      files: ["lib", "config", "priv", "mix.exs", "README.md"],
+      maintainers: ["linq <linq.lin@qq.com>"],
+      licenses: ["MIT"],
+      links: %{"GitHub": "https://github.com/wzdot/aliyun.git" }
+    ]    
   end
 end
