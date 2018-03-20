@@ -4,18 +4,13 @@ defmodule Aliyun.SMS.CLI do
   @moduledoc """
     阿里云SMS库
   """
-  @sms_endpoint Application.get_env(:aliyun, :sms_endpoint)
-  @sms_access_key_id Application.get_env(:aliyun, :sms_access_key_id) || Application.get_env(:aliyun, :access_key_id)
-  @sms_access_key_secret Application.get_env(:aliyun, :sms_access_key_secret) || Application.get_env(:aliyun, :access_key_secret)
-  @sms_signature_version Application.get_env(:aliyun, :sms_signature_version)
-  @sms_version Application.get_env(:aliyun, :sms_version)
-  @sms_region_id Application.get_env(:aliyun, :sms_region_id)
 
-  def send(phone_numbers, template_code, template_param, sign_name \\ Application.get_env(:aliyun, :sms_sign_name)) do
+  def send(phone_numbers, template_code, template_param, sign_name \\ Aliyun.Env.sms_sign_name) do
     arguments = format_arguments(phone_numbers, template_code, template_param, sign_name)
+    IO.inspect arguments
     signature = gen_signature(arguments)
     body = [{"Signature", signature} | arguments]
-    case HTTPoison.post(@sms_endpoint, {:form, body}) do
+    case HTTPoison.post(Aliyun.Env.sms_endpoint, {:form, body}) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         phone_numbers |> String.split(",") |> Enum.each(fn phone -> Logger.info("[#{template_code}##{phone}] => #{Poison.encode!(template_param)}", filter: :sms) end)
         {:ok, 200, Poison.decode!(body)}
@@ -29,20 +24,20 @@ defmodule Aliyun.SMS.CLI do
   defp gen_signature(arguments, method \\ "POST") do
     args = arguments |> Enum.map(fn {key, val} -> {url_encode(key), url_encode(val)} end) |> Enum.map(fn {key, val} -> "#{key}=#{val}" end) |> Enum.join("&")
     string_to_sign = "#{String.upcase(method)}" <> "&" <> url_encode("/") <> "&" <> url_encode(args)
-    :crypto.hmac(:sha, "#{@sms_access_key_secret}&", string_to_sign) |> Base.encode64
+    :crypto.hmac(:sha, "#{Aliyun.Env.sms_access_key_secret}&", string_to_sign) |> Base.encode64
   end
 
   defp format_arguments(phone_numbers, template_code, template_param, sign_name) do
     %{
       "SignatureMethod" => "HMAC-SHA1",
       "SignatureNonce" => UUID.uuid1(),
-      "AccessKeyId" => @sms_access_key_id,
-      "SignatureVersion" => @sms_signature_version,
+      "AccessKeyId" => Aliyun.Env.sms_access_key_id,
+      "SignatureVersion" => Aliyun.Env.sms_signature_version,
       "Timestamp" => format_gmt_time(),
       "Format" => "JSON",
       "Action" => "SendSms",
-      "Version" => @sms_version,
-      "RegionId" => @sms_region_id,
+      "Version" => Aliyun.Env.sms_version,
+      "RegionId" => Aliyun.Env.sms_region_id,
       "PhoneNumbers" => phone_numbers,
       "SignName" => sign_name,
       "TemplateParam" => Poison.encode!(template_param),
