@@ -4,18 +4,15 @@ defmodule Aliyun.SMS.CLI do
   @moduledoc """
     阿里云SMS库
   """
-  alias Aliyun.Config, as: Config
+  @sms_endpoint Application.get_env(:aliyun, :sms_endpoint)
+  @sms_access_key_id Application.get_env(:aliyun, :sms_access_key_id) || Application.get_env(:aliyun, :access_key_id)
+  @sms_access_key_secret Application.get_env(:aliyun, :sms_access_key_secret) || Application.get_env(:aliyun, :access_key_secret)
+  @sms_signature_version Application.get_env(:aliyun, :sms_signature_version)
+  @sms_version Application.get_env(:aliyun, :sms_version)
+  @sms_region_id Application.get_env(:aliyun, :sms_region_id)
 
-  @sms_endpoint Config.get(:aliyun, :sms_endpoint)
-  @sms_access_key_id Config.get(:aliyun, :access_key_id) || Config.get(:aliyun, :sms_access_key_id)
-  @sms_access_key_secret Config.get(:aliyun, :access_key_secret) || Config.get(:aliyun, :sms_access_key_secret)
-  @sms_signature_version Config.get(:aliyun, :sms_signature_version)
-  @sms_version Config.get(:aliyun, :sms_version)
-  @sms_region_id Config.get(:aliyun, :sms_region_id)
-  @sms_sign_name Config.get(:aliyun, :sms_sign_name)
-
-  def send(phone_numbers, template_code, template_param) do
-    arguments = format_arguments(phone_numbers, template_code, template_param)
+  def send(phone_numbers, template_code, template_param, sign_name \\ Application.get_env(:aliyun, :sms_sign_name)) do
+    arguments = format_arguments(phone_numbers, template_code, template_param, sign_name)
     signature = gen_signature(arguments)
     body = [{"Signature", signature} | arguments]
     case HTTPoison.post(@sms_endpoint, {:form, body}) do
@@ -35,7 +32,7 @@ defmodule Aliyun.SMS.CLI do
     :crypto.hmac(:sha, "#{@sms_access_key_secret}&", string_to_sign) |> Base.encode64
   end
 
-  defp format_arguments(phone_numbers, template_code, template_param) do
+  defp format_arguments(phone_numbers, template_code, template_param, sign_name) do
     %{
       "SignatureMethod" => "HMAC-SHA1",
       "SignatureNonce" => UUID.uuid1(),
@@ -47,7 +44,7 @@ defmodule Aliyun.SMS.CLI do
       "Version" => @sms_version,
       "RegionId" => @sms_region_id,
       "PhoneNumbers" => phone_numbers,
-      "SignName" => @sms_sign_name,
+      "SignName" => sign_name,
       "TemplateParam" => Poison.encode!(template_param),
       "TemplateCode" => template_code
     } |> Enum.sort_by(fn {key, _} -> key end)
