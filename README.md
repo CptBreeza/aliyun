@@ -9,7 +9,7 @@ by adding `aliyun` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:aliyun, "~> 0.1.0"}]
+  [{:aliyun, "~> 0.1.1"}]
 end
 ```
 
