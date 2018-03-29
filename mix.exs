@@ -3,7 +3,7 @@ defmodule Aliyun.Mixfile do
 
   def project do
     [app: :aliyun,
-     version: "1.0.0",
+     version: "1.0.11",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -27,7 +27,8 @@ defmodule Aliyun.Mixfile do
       {:httpoison, "~> 1.0"},
       {:uuid, "~> 1.1"},
       {:distillery, "~> 1.5", runtime: false},
-      {:ex_doc, ">= 0.0.0", only: :dev}
+      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:confex, "~> 3.3.1"}
     ]
   end
 

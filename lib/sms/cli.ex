@@ -5,9 +5,8 @@ defmodule Aliyun.SMS.CLI do
     阿里云SMS库
   """
 
-  def send(phone_numbers, template_code, template_param, sign_name \\ Aliyun.Env.sms_sign_name) do
+  def send(phone_numbers, template_code, template_param, sign_name) do
     arguments = format_arguments(phone_numbers, template_code, template_param, sign_name)
-    IO.inspect arguments
     signature = gen_signature(arguments)
     body = [{"Signature", signature} | arguments]
     case HTTPoison.post(Aliyun.Env.sms_endpoint, {:form, body}) do

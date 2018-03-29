@@ -115,7 +115,7 @@ defmodule Aliyun.OSS.CLI do
     url = bucket <> "." <> oss_endpoint <> "/#{object_key}"
     case HTTPoison.put(url, stream, headers) do
       {:ok, %HTTPoison.Response{status_code: 200}} ->
-        Logger.info("put_object##{object_key}@#{bucket}", filter: :oss)
+        Logger.info("put_object#@#{bucket}#{object_key}", filter: :oss)
         {:ok, 200}
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         error = body |> xpath(~x"//Error", code: ~x"./Code/text()", message: ~x"./Message/text()")
@@ -137,7 +137,7 @@ defmodule Aliyun.OSS.CLI do
     url = bucket <> "." <> oss_endpoint <> "/#{object_key}"
     case HTTPoison.put(url, stream, headers) do
       {:ok, %HTTPoison.Response{status_code: 200}} ->
-        Logger.info("put_stream_object##{object_key}@#{bucket}", filter: :oss)
+        Logger.info("put_stream_object@#{bucket}##{object_key}", filter: :oss)
         {:ok, 200}
       {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         error = body |> xpath(~x"//Error", code: ~x"./Code/text()", message: ~x"./Message/text()")

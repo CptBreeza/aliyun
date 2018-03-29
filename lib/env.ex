@@ -4,11 +4,11 @@ defmodule Aliyun.Env do
   end
 
   def oss_access_key_id do
-    Application.get_env(:aliyun, :oss_access_key_id) || Application.get_env(:aliyun, :access_key_id)
+    Application.get_env(:aliyun, :oss_access_key_id)
   end
 
   def oss_access_key_secret do
-    Application.get_env(:aliyun, :oss_access_key_secret) || Application.get_env(:aliyun, :access_key_secret)
+    Application.get_env(:aliyun, :oss_access_key_secret)
   end
 
   def sms_endpoint do
@@ -16,11 +16,11 @@ defmodule Aliyun.Env do
   end
 
   def sms_access_key_id do
-    Application.get_env(:aliyun, :sms_access_key_id) || Application.get_env(:aliyun, :access_key_id)
+    Application.get_env(:aliyun, :sms_access_key_id)
   end
 
   def sms_access_key_secret do
-    Application.get_env(:aliyun, :sms_access_key_secret) || Application.get_env(:aliyun, :access_key_secret)
+    Application.get_env(:aliyun, :sms_access_key_secret)
   end
 
   def sms_signature_version do
@@ -33,9 +33,5 @@ defmodule Aliyun.Env do
 
   def sms_region_id do
     Application.get_env(:aliyun, :sms_region_id)
-  end
-
-  def sms_sign_name do
-    Application.get_env(:aliyun, :sms_sign_name)
   end
 end
