@@ -103,15 +103,16 @@ defmodule Aliyun.OSS.CLI do
 
   @doc """
     上传文件对象.
-    iex> Aliyun.OSS.CLI.put_object("icb-data", "irps/passport.png", "passport.png")
+    iex> Aliyun.OSS.CLI.put_object("icb-data", "irps/passport.png", "passport.png", [acl: :public_read])
     :ok
   """
-  def put_object(bucket, object_key, file_name, oss_endpoint \\ Aliyun.Env.oss_endpoint) do
+  def put_object(bucket, object_key, file_name, [acl: acl_symbol], oss_endpoint \\ Aliyun.Env.oss_endpoint) do
     mime = Mime.path(object_key)
     stream = File.read!(file_name)
-    string_to_sign = "PUT\n\n#{mime}\n#{format_gmt_time()}\n/#{bucket}/#{object_key}"
+    acl = normalize_acl_parameter(acl_symbol)
+    string_to_sign = "PUT\n\n#{mime}\n#{format_gmt_time()}\nx-oss-object-acl:#{acl}\n/#{bucket}/#{object_key}"
     signature = gen_signature(string_to_sign)
-    headers = ["Authorization": "OSS #{Aliyun.Env.oss_access_key_id}:#{signature}", "Date": format_gmt_time(), "Content-Type": mime]
+    headers = ["Authorization": "OSS #{Aliyun.Env.oss_access_key_id}:#{signature}", "Date": format_gmt_time(), "Content-Type": mime, "X-OSS-Object-Acl": acl]
     url = bucket <> "." <> oss_endpoint <> "/#{object_key}"
     case HTTPoison.put(url, stream, headers) do
       {:ok, %HTTPoison.Response{status_code: 200}} ->
@@ -127,13 +128,14 @@ defmodule Aliyun.OSS.CLI do
 
   @doc """
     上传文件对象.
-    iex> Aliyun.OSS.CLI.put_stream_object("icb-data", "irps/passport.png", File.read!("passport.png"))
+    iex> Aliyun.OSS.CLI.put_stream_object("icb-data", "irps/passport.png", File.read!("passport.png"), [acl: :public_read])
   """
-  def put_stream_object(bucket, object_key, stream, oss_endpoint \\ Aliyun.Env.oss_endpoint) do
+  def put_stream_object(bucket, object_key, stream, [acl: acl_symbol], oss_endpoint \\ Aliyun.Env.oss_endpoint) do
     mime = Mime.path(object_key)
-    string_to_sign = "PUT\n\n#{mime}\n#{format_gmt_time()}\n/#{bucket}/#{object_key}"
+    acl = normalize_acl_parameter(acl_symbol)
+    string_to_sign = "PUT\n\n#{mime}\n#{format_gmt_time()}\nx-oss-object-acl:#{acl}\n/#{bucket}/#{object_key}"
     signature = gen_signature(string_to_sign)
-    headers = ["Authorization": "OSS #{Aliyun.Env.oss_access_key_id}:#{signature}", "Date": format_gmt_time(), "Content-Type": mime]
+    headers = ["Authorization": "OSS #{Aliyun.Env.oss_access_key_id}:#{signature}", "Date": format_gmt_time(), "Content-Type": mime, "X-OSS-Object-Acl": acl]
     url = bucket <> "." <> oss_endpoint <> "/#{object_key}"
     case HTTPoison.put(url, stream, headers) do
       {:ok, %HTTPoison.Response{status_code: 200}} ->
@@ -192,4 +194,7 @@ defmodule Aliyun.OSS.CLI do
   defp format_gmt_time do
     Timex.format!(Timex.now, "%a, %d %b %Y %H:%M:%S GMT", :strftime)
   end
+
+  defp normalize_acl_parameter(acl_symbol) when acl_symbol in [:private, :public_read, :public_read_write],
+    do: acl_symbol |> to_string |> String.replace("_", "-")
 end
